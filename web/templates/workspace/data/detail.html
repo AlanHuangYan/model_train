@@ -1,0 +1,72 @@
+{% extends "workspace/base.html" %}
+
+{% block title %}数据文件详情 - {{ current_project.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="mb-4">
+        <a href="{{ url_for('workspace.data', project_id=current_project.id) }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> 返回
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h4>{{ data_file.name or data_file.filename }}</h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>基本信息</h5>
+                    <table class="table">
+                        <tr>
+                            <th>文件 ID</th>
+                            <td>{{ data_file._id }}</td>
+                        </tr>
+                        <tr>
+                            <th>名称</th>
+                            <td>{{ data_file.name or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>文件名</th>
+                            <td>{{ data_file.filename }}</td>
+                        </tr>
+                        <tr>
+                            <th>文件大小</th>
+                            <td>{{ "%.2f"|format(data_file.size / 1024) if data_file.size else 0 }} KB</td>
+                        </tr>
+                        <tr>
+                            <th>上传人</th>
+                            <td>{{ data_file.uploaded_by }}</td>
+                        </tr>
+                        <tr>
+                            <th>上传时间</th>
+                            <td>{{ data_file.created_at|format_datetime }}</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <div class="col-md-6">
+                    <h5>数据预览</h5>
+                    {% if data_file.preview %}
+                    <div class="table-responsive">
+                        {{ data_file.preview | safe }}
+                    </div>
+                    {% else %}
+                    <p class="text-muted">暂无预览数据</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <hr>
+            
+            <form action="{{ url_for('workspace.delete_data', project_id=current_project.id, file_id=data_file._id) }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button type="submit" class="btn btn-danger" onclick="return confirm('确定删除？')">
+                    <i class="bi bi-trash"></i> 删除文件
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

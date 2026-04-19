@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}模型训练管理系统{% endblock %}</title>
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-icons.css') }}">
+    <style>
+        .sidebar {
+            min-height: 100vh;
+            background-color: #343a40;
+        }
+        .sidebar a {
+            color: #fff;
+            text-decoration: none;
+        }
+        .sidebar a:hover {
+            color: #adb5bd;
+        }
+        .content {
+            padding: 20px;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 侧边栏 -->
+            <nav class="col-md-3 col-lg-2 d-md-block sidebar p-3">
+                <div class="text-center mb-4">
+                    <h5 class="text-white">模型训练管理</h5>
+                </div>
+                
+                {% if current_user.is_authenticated %}
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('dashboard.index') }}">
+                            <i class="bi bi-speedometer2"></i> 仪表板
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('projects.portal') }}">
+                            <i class="bi bi-grid"></i> 项目管理
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('auth.list_users') }}">
+                            <i class="bi bi-people"></i> 用户管理
+                        </a>
+                    </li>
+                </ul>
+                
+                <!-- 如果有当前项目，显示项目信息 -->
+                {% if session.get('current_project_id') %}
+                <hr class="bg-light">
+                <div class="mb-3 p-2 bg-light rounded">
+                    <small class="text-muted">当前项目</small>
+                    <div class="fw-bold text-primary">{{ session.get('current_project_name', '未知') }}</div>
+                    <a href="{{ url_for('projects.project_workspace', project_id=session.get('current_project_id')) }}" class="btn btn-sm btn-primary w-100 mt-1">
+                        <i class="bi bi-layout-sidebar"></i> 进入项目空间
+                    </a>
+                </div>
+                {% endif %}
+                
+                <hr class="bg-white">
+                
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('auth.logout') }}">
+                            <i class="bi bi-box-arrow-right"></i> 登出
+                        </a>
+                    </li>
+                </ul>
+                {% else %}
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('auth.login') }}">
+                            <i class="bi bi-box-arrow-in-right"></i> 登录
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('auth.register') }}">
+                            <i class="bi bi-person-plus"></i> 注册
+                        </a>
+                    </li>
+                </ul>
+                {% endif %}
+            </nav>
+            
+            <!-- 主内容区 -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 content">
+                <!-- 顶部导航 -->
+                <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
+                    <div class="container-fluid">
+                        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                            <span class="navbar-toggler-icon"></span>
+                        </button>
+                        <div class="collapse navbar-collapse" id="navbarNav">
+                            <ul class="navbar-nav me-auto">
+                                <li class="nav-item">
+                                    <span class="nav-link">欢迎，{{ current_user.email if current_user.is_authenticated else '访客' }}</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </nav>
+                
+                <!-- 闪络消息 -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+                {% endif %}
+                {% endwith %}
+                
+                <!-- 页面内容 -->
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

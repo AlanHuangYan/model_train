@@ -1,0 +1,54 @@
+{% extends "workspace/base.html" %}
+
+{% block title %}创建模型 - {{ current_project.name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4>创建模型</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <div class="mb-3">
+                        <label for="name" class="form-label">模型名称</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                        <div class="form-text">例如：酒店客服 Qwen3.5</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="base_model" class="form-label">基础模型</label>
+                        <select class="form-select" id="base_model" name="base_model" required>
+                            <option value="">选择已下载的模型</option>
+                            {% for model in available_models %}
+                            <option value="{{ model.path }}">{{ model.name }} ({{ model.path }})</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">选择本地 models 目录下已下载的模型</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">描述</label>
+                        <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                        <div class="form-text">模型用途说明（可选）</div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i> 创建模型
+                        </button>
+                    </div>
+                </form>
+                
+                <hr>
+                
+                <a href="{{ url_for('workspace.models', project_id=current_project.id) }}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> 返回
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

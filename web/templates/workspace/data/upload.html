@@ -1,0 +1,43 @@
+{% extends "workspace/base.html" %}
+
+{% block title %}上传数据 - {{ current_project.name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4>上传数据文件</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <div class="mb-3">
+                        <label for="name" class="form-label">数据名称</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                        <div class="form-text">为数据文件起一个易于识别的名称</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="file" class="form-label">选择文件</label>
+                        <input type="file" class="form-control" id="file" name="file" required>
+                        <div class="form-text">支持 CSV、JSON 和 JSONL 格式，最大 16MB</div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-upload"></i> 上传
+                        </button>
+                    </div>
+                </form>
+                
+                <hr>
+                
+                <a href="{{ url_for('workspace.data', project_id=current_project.id) }}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> 返回
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,123 @@
+{% extends "workspace/base.html" %}
+
+{% block title %}创建任务 - {{ current_project.name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4>创建训练任务</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <div class="mb-3">
+                        <label for="name" class="form-label">任务名称</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="data_file" class="form-label">数据文件</label>
+                        <select class="form-select" id="data_file" name="data_file">
+                            <option value="">选择数据文件</option>
+                            {% for file in data_files %}
+                            <option value="{{ file.filename }}">{{ file.name or file.filename }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="model_id" class="form-label">使用模型</label>
+                        <select class="form-select" id="model_id" name="model_id">
+                            <option value="">选择项目中的模型（可选）</option>
+                            {% for model in models %}
+                            <option value="{{ model._id }}" data-base-model="{{ model.base_model }}">{{ model.name }} - {{ model.base_model }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">选择已有模型进行训练，或不选使用基础模型</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="base_model" class="form-label">基础模型</label>
+                        <select class="form-select" id="base_model" name="base_model" disabled>
+                            <option value="">选择本地已下载的模型</option>
+                            {% for model in available_models %}
+                            <option value="{{ model.path }}">{{ model.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text" id="base_model_help">选择项目模型后，将自动显示该模型的基础模型</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="use_gpu" class="form-label">训练设备</label>
+                        <select class="form-select" id="use_gpu" name="use_gpu">
+                            <option value="auto">自动（推荐）</option>
+                            <option value="cpu">仅 CPU</option>
+                            <option value="gpu">GPU（如果可用）</option>
+                        </select>
+                        <div class="form-text">
+                            <i class="bi bi-info-circle"></i> 
+                            <strong>自动</strong>: 优先使用 GPU，不可用时使用 CPU<br>
+                            <strong>仅 CPU</strong>: 强制使用 CPU 训练<br>
+                            <strong>GPU</strong>: 强制使用 GPU，如果不可用会报错
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="merge_model" name="merge_model" value="true">
+                            <label class="form-check-label" for="merge_model">
+                                训练完成后自动合并模型
+                            </label>
+                        </div>
+                        <div class="form-text">
+                            <i class="bi bi-info-circle"></i> 
+                            <strong>勾选</strong>: 训练后将 LoRA 权重合并到基础模型，生成完整模型文件<br>
+                            <strong>不勾选</strong>: 仅保存 LoRA adapter（约 1.2MB），需要配合基础模型使用<br>
+                            <small class="text-muted">
+                                <i class="bi bi-info-circle"></i> 
+                                <strong>注意</strong>: 如果使用 Qwen3.5-VL 等多模态模型，合并后只保留文本部分 (~1.4GB)，不包含视觉编码器<br>
+                                合并过程需要 3-5 分钟，需要约 8GB 内存
+                            </small>
+                        </div>
+                    </div>
+                    
+                    <script>
+                        document.getElementById('model_id').addEventListener('change', function() {
+                            const selectedOption = this.options[this.selectedIndex];
+                            const baseModelSelect = document.getElementById('base_model');
+                            const baseModelHelp = document.getElementById('base_model_help');
+                            
+                            if (this.value) {
+                                // 选择了项目模型
+                                const baseModel = selectedOption.getAttribute('data-base-model');
+                                baseModelSelect.value = baseModel;
+                                baseModelSelect.disabled = true;
+                                baseModelHelp.textContent = '使用所选项目模型的基础模型';
+                            } else {
+                                // 未选择项目模型
+                                baseModelSelect.value = '';
+                                baseModelSelect.disabled = false;
+                                baseModelHelp.textContent = '不选择项目模型时，将使用此基础模型';
+                            }
+                        });
+                    </script>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i> 创建任务
+                        </button>
+                    </div>
+                </form>
+                
+                <hr>
+                
+                <a href="{{ url_for('workspace.tasks', project_id=current_project.id) }}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> 返回
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

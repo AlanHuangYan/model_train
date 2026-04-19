@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project.name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('projects.portal') }}">项目</a></li>
+            <li class="breadcrumb-item active">{{ project.name }}</li>
+        </ol>
+    </nav>
+    
+    <div class="card mb-4">
+        <div class="card-body">
+            <h3>{{ project.name }}</h3>
+            <h5 class="text-muted">{{ project.english_name }}</h5>
+            <p>{{ project.description or '暂无描述' }}</p>
+            <p>
+                <strong>创建者:</strong> {{ project.created_by or '未知' }}<br>
+                <strong>创建时间:</strong> {{ project.created_at|format_datetime }}
+            </p>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">任务</h5>
+                    <p class="display-4">{{ tasks|length }}</p>
+                    <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-primary">查看任务</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">模型</h5>
+                    <p class="display-4">{{ models|length }}</p>
+                    <a href="{{ url_for('models.list_models') }}" class="btn btn-primary">查看模型</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">数据</h5>
+                    <p class="display-4">{{ data_files|length }}</p>
+                    <a href="{{ url_for('data.list_data') }}" class="btn btn-primary">查看数据</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

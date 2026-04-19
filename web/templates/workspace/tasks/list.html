@@ -1,0 +1,97 @@
+{% extends "workspace/base.html" %}
+
+{% block title %}任务管理 - {{ current_project.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>任务管理</h2>
+        <div>
+            <a href="{{ url_for('workspace.check_gpu_status', project_id=current_project.id) }}" class="btn btn-info me-2" target="_blank">
+                <i class="bi bi-cpu"></i> 检测 GPU
+            </a>
+            <a href="{{ url_for('workspace.create_task', project_id=current_project.id) }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> 新建任务
+            </a>
+        </div>
+    </div>
+    
+    {% if tasks %}
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>名称</th>
+                <th>状态</th>
+                <th>基础模型</th>
+                <th>数据文件</th>
+                <th>训练设备</th>
+                <th>创建人</th>
+                <th>创建时间</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for task in tasks %}
+            <tr>
+                <td>{{ task._id }}</td>
+                <td>{{ task.name }}</td>
+                <td>
+                    {% if task.status == 'pending' %}
+                    <span class="badge bg-warning">待处理</span>
+                    {% elif task.status == 'running' %}
+                    <span class="badge bg-info">运行中</span>
+                    {% elif task.status == 'completed' %}
+                    <span class="badge bg-success">已完成</span>
+                    {% elif task.status == 'failed' %}
+                    <span class="badge bg-danger">失败</span>
+                    {% elif task.status == 'cancelled' %}
+                    <span class="badge bg-secondary">已取消</span>
+                    {% endif %}
+                </td>
+                <td>{{ task.base_model or '-' }}</td>
+                <td>{{ task.data_file or '-' }}</td>
+                <td>
+                    {% if task.use_gpu == 'gpu' %}
+                    <span class="badge bg-success" title="使用 GPU"><i class="bi bi-cpu"></i> GPU</span>
+                    {% elif task.use_gpu == 'cpu' %}
+                    <span class="badge bg-secondary" title="使用 CPU"><i class="bi bi-hdd"></i> CPU</span>
+                    {% else %}
+                    <span class="badge bg-info" title="自动选择"><i class="bi bi-cpu-fill"></i> 自动</span>
+                    {% endif %}
+                </td>
+                <td>{{ task.created_by }}</td>
+                <td>{{ task.created_at|format_datetime }}</td>
+                <td>
+                    <a href="{{ url_for('workspace.task_detail', project_id=current_project.id, task_id=task._id) }}" class="btn btn-sm btn-info">
+                        <i class="bi bi-eye"></i> 查看
+                    </a>
+                    {% if task.status == 'pending' %}
+                    <a href="{{ url_for('workspace.start_training', project_id=current_project.id, task_id=task._id) }}" class="btn btn-sm btn-success" onclick="return confirm('确定开始训练？')">
+                        <i class="bi bi-play-fill"></i> 训练
+                    </a>
+                    {% elif task.status == 'failed' %}
+                    <a href="{{ url_for('workspace.start_training', project_id=current_project.id, task_id=task._id) }}" class="btn btn-sm btn-warning" onclick="return confirm('确定重试训练？')">
+                        <i class="bi bi-arrow-clockwise"></i> 重试
+                    </a>
+                    {% elif task.status == 'cancelled' %}
+                    <a href="{{ url_for('workspace.start_training', project_id=current_project.id, task_id=task._id) }}" class="btn btn-sm btn-success" onclick="return confirm('确定开始训练？')">
+                        <i class="bi bi-play-fill"></i> 训练
+                    </a>
+                    {% endif %}
+                    <form action="{{ url_for('workspace.delete_task', project_id=current_project.id, task_id=task._id) }}" method="POST" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('确定删除？')">
+                            <i class="bi bi-trash"></i> 删除
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="alert alert-info">暂无任务</div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,346 @@
+{% extends "workspace/base.html" %}
+
+{% block title %}任务详情 - {{ current_project.name }}{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="mb-4">
+        <a href="{{ url_for('workspace.tasks', project_id=current_project.id) }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> 返回
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h4>{{ task.name }}</h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>基本信息</h5>
+                    <table class="table">
+                        <tr>
+                            <th>任务 ID</th>
+                            <td>{{ task._id }}</td>
+                        </tr>
+                        <tr>
+                            <th>状态</th>
+                            <td>
+                                {% if task.status == 'pending' %}
+                                <span class="badge bg-warning">待处理</span>
+                                {% elif task.status == 'running' %}
+                                <span class="badge bg-info">运行中</span>
+                                {% elif task.status == 'completed' %}
+                                <span class="badge bg-success">已完成</span>
+                                {% elif task.status == 'failed' %}
+                                <span class="badge bg-danger">失败</span>
+                                {% elif task.status == 'cancelled' %}
+                                <span class="badge bg-secondary">已取消</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>数据文件</th>
+                            <td>{{ task.data_file or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>基础模型</th>
+                            <td>{{ task.base_model or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>模型 ID</th>
+                            <td>{{ task.model_id or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>训练设备</th>
+                            <td>
+                                {% if task.use_gpu == 'gpu' %}
+                                <span class="badge bg-success"><i class="bi bi-cpu"></i> GPU</span>
+                                {% elif task.use_gpu == 'cpu' %}
+                                <span class="badge bg-secondary"><i class="bi bi-hdd"></i> CPU</span>
+                                {% else %}
+                                <span class="badge bg-info"><i class="bi bi-cpu-fill"></i> 自动</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>合并模型</th>
+                            <td>
+                                {% if task.merge_model %}
+                                <span class="badge bg-success"><i class="bi bi-check-circle"></i> 是</span>
+                                {% else %}
+                                <span class="badge bg-secondary"><i class="bi bi-x-circle"></i> 否</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>创建人</th>
+                            <td>{{ task.created_by }}</td>
+                        </tr>
+                        <tr>
+                            <th>创建时间</th>
+                            <td>{{ task.created_at|format_datetime }}</td>
+                        </tr>
+                        {% if task.updated_at %}
+                        <tr>
+                            <th>更新时间</th>
+                            <td>{{ task.updated_at }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+                
+                <div class="col-md-6">
+                    <h5>训练结果</h5>
+                    {% if task.result %}
+                    <div class="alert alert-success">
+                        <strong>模型版本:</strong> {{ task.result.model_version }}<br>
+                        <strong>准确率:</strong> {{ task.result.evaluation.accuracy }}<br>
+                        <strong>精确率:</strong> {{ task.result.evaluation.precision }}<br>
+                        <strong>召回率:</strong> {{ task.result.evaluation.recall }}
+                    </div>
+                    {% else %}
+                    <p class="text-muted">暂无结果</p>
+                    {% endif %}
+                    
+                    {% if task.status == 'running' %}
+                    <div class="alert alert-info mt-3">
+                        <strong>日志文件:</strong><br>
+                        <i class="bi bi-file-text"></i> 系统日志：<code>logs/task_{{ task._id }}.log</code><br>
+                        <i class="bi bi-terminal"></i> 训练输出：<code>logs/task_{{ task._id }}_train.log</code>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            {% if task.status == 'running' %}
+            <hr>
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> 任务正在训练中，请稍候后查看结果<br>
+                <small>页面将每 5 秒自动刷新一次</small>
+            </div>
+            <div class="mb-3">
+                <div class="progress">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" 
+                         style="width: {{ task.progress|default(0) }}%">
+                        {{ task.progress|default(0) }}%
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <form action="{{ url_for('workspace.cancel_task', project_id=current_project.id, task_id=task._id) }}" method="POST" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-warning" onclick="return confirm('确定取消？')">
+                        <i class="bi bi-x-circle"></i> 取消任务
+                    </button>
+                </form>
+                <button type="button" class="btn btn-secondary" onclick="checkStatusNow()">
+                    <i class="bi bi-arrow-clockwise"></i> 立即刷新
+                </button>
+            </div>
+            
+            <script>
+            // 自动刷新任务状态
+            let autoRefreshInterval = setInterval(checkStatusNow, 5000);
+            
+            function checkStatusNow() {
+                fetch('{{ url_for("workspace.check_task_status", project_id=current_project.id, task_id=task._id) }}')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status !== 'running') {
+                            // 状态已改变，停止自动刷新并刷新页面
+                            clearInterval(autoRefreshInterval);
+                            if (data.status === 'failed') {
+                                alert('任务失败：' + (data.error || '未知错误'));
+                            } else if (data.status === 'completed') {
+                                alert('任务已完成！');
+                            }
+                            location.reload();
+                        } else {
+                            // 更新进度条
+                            const progressBar = document.querySelector('.progress-bar');
+                            if (progressBar) {
+                                progressBar.style.width = data.progress + '%';
+                                progressBar.textContent = data.progress + '%';
+                            }
+                        }
+                    })
+                    .catch(error => console.error('检查状态失败:', error));
+            }
+            </script>
+            {% elif task.status == 'failed' %}
+            <hr>
+            {% if task.error %}
+            <div class="alert alert-danger">
+                <strong>错误信息：</strong>
+                <pre class="mb-0">{{ task.error }}</pre>
+            </div>
+            {% endif %}
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('workspace.start_training', project_id=current_project.id, task_id=task._id) }}" class="btn btn-success" onclick="return confirm('确定重试？')">
+                    <i class="bi bi-arrow-clockwise"></i> 重试训练
+                </a>
+                <form action="{{ url_for('workspace.delete_task', project_id=current_project.id, task_id=task._id) }}" method="POST" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-danger" onclick="return confirm('确定删除？')">
+                        <i class="bi bi-trash"></i> 删除任务
+                    </button>
+                </form>
+            </div>
+            {% elif task.status == 'cancelled' %}
+            <hr>
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> 任务已取消，可以再次启动训练
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('workspace.start_training', project_id=current_project.id, task_id=task._id) }}" class="btn btn-success" onclick="return confirm('确定开始训练？')">
+                    <i class="bi bi-play-fill"></i> 训练
+                </a>
+                <form action="{{ url_for('workspace.delete_task', project_id=current_project.id, task_id=task._id) }}" method="POST" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-danger" onclick="return confirm('确定删除？')">
+                        <i class="bi bi-trash"></i> 删除任务
+                    </button>
+                </form>
+            </div>
+            {% elif task.status == 'pending' %}
+            <hr>
+            <a href="{{ url_for('workspace.start_training', project_id=current_project.id, task_id=task._id) }}" class="btn btn-success">
+                <i class="bi bi-play-fill"></i> 开始训练
+            </a>
+            {% elif task.status == 'completed' %}
+            <hr>
+            <div class="alert alert-success">
+                <i class="bi bi-check-circle"></i> 训练已完成
+            </div>
+            
+            <!-- 训练损失曲线图 -->
+            <div id="trainingMetricsSection" style="display:none">
+                <h5><i class="bi bi-graph-up"></i> 训练损失曲线</h5>
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <canvas id="lossChart" height="300"></canvas>
+                    </div>
+                </div>
+                <div id="trainingInfo" class="mb-3"></div>
+            </div>
+            
+            <script>
+            (function() {
+                var metricsUrl = '{{ url_for("workspace.training_metrics", project_id=current_project.id, task_id=task._id) }}';
+                fetch(metricsUrl)
+                    .then(function(res) { return res.json(); })
+                    .then(function(data) {
+                        if (data.metrics && data.metrics.steps && data.metrics.steps.length > 0) {
+                            var metrics = data.metrics;
+                            document.getElementById('trainingMetricsSection').style.display = 'block';
+                            
+                            // 显示训练信息
+                            var infoHtml = '<small class="text-muted">';
+                            infoHtml += '训练轮数：' + metrics.num_train_epochs + ' epoch(s)';
+                            infoHtml += ' | Batch Size: ' + metrics.train_batch_size;
+                            infoHtml += ' | 最终 Loss: ' + metrics.losses[metrics.losses.length - 1].toFixed(4);
+                            infoHtml += '</small>';
+                            document.getElementById('trainingInfo').innerHTML = infoHtml;
+                            
+                            // 绘制图表
+                            var ctx = document.getElementById('lossChart').getContext('2d');
+                            new Chart(ctx, {
+                                type: 'line',
+                                data: {
+                                    labels: metrics.steps,
+                                    datasets: [{
+                                        label: 'Loss',
+                                        data: metrics.losses,
+                                        borderColor: 'rgb(75, 192, 192)',
+                                        backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                                        tension: 0.3,
+                                        fill: true,
+                                        pointBackgroundColor: 'rgb(75, 192, 192)',
+                                        pointBorderColor: '#fff',
+                                        pointBorderWidth: 2,
+                                        pointRadius: 5,
+                                    }]
+                                },
+                                options: {
+                                    responsive: true,
+                                    plugins: {
+                                        title: {
+                                            display: true,
+                                            text: '训练 Loss 变化趋势'
+                                        },
+                                        legend: {
+                                            display: false
+                                        }
+                                    },
+                                    scales: {
+                                        x: {
+                                            title: {
+                                                display: true,
+                                                text: 'Step'
+                                            }
+                                        },
+                                        y: {
+                                            title: {
+                                                display: true,
+                                                text: 'Loss'
+                                            },
+                                            beginAtZero: false
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                    })
+                    .catch(function(err) {
+                        console.error('加载训练指标失败:', err);
+                    });
+            })();
+            </script>
+            
+            {% if not task.merge_model %}
+            <div class="alert alert-warning mt-3">
+                <i class="bi bi-info-circle"></i> 
+                <strong>提示：</strong>当前任务未合并模型，仅保存了 LoRA adapter（约 1.2MB）<br>
+                <small>合并后会生成完整的模型文件，可以独立使用，无需基础模型</small>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('workspace.merge_task_model', project_id=current_project.id, task_id=task._id) }}" class="btn btn-primary" onclick="return confirm('确定合并模型？\n\n合并过程需要 3-5 分钟。\n\n注意：如果使用 Qwen3.5-VL 等多模态模型，合并后只保留文本部分 (~1.4GB)，不包含视觉编码器。')">
+                    <i class="bi bi-layers"></i> 合并模型
+                </a>
+                <form action="{{ url_for('workspace.delete_task', project_id=current_project.id, task_id=task._id) }}" method="POST" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-danger" onclick="return confirm('确定删除？')">
+                        <i class="bi bi-trash"></i> 删除任务
+                    </button>
+                </form>
+            </div>
+            {% else %}
+            <div class="alert alert-success mt-3">
+                <i class="bi bi-check-circle"></i> 
+                <strong>模型已合并</strong><br>
+                <small>完整模型已保存到：<code>models/{{ current_project.english_name }}_task{{ task._id }}_merged/</code></small>
+            </div>
+            <hr>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('workspace.compare_models', project_id=current_project.id, task_id=task._id) }}" class="btn btn-info">
+                    <i class="bi bi-chat-square-text"></i> 对比测试
+                </a>
+                <form action="{{ url_for('workspace.delete_task', project_id=current_project.id, task_id=task._id) }}" method="POST" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-danger" onclick="return confirm('确定删除？')">
+                        <i class="bi bi-trash"></i> 删除任务
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

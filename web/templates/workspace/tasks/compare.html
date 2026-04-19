@@ -1,0 +1,582 @@
+{% extends "workspace/base.html" %}
+
+{% block title %}模型对比测试 - {{ current_project.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 对比面板样式 */
+    .compare-panel {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        overflow: hidden;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    .compare-panel .panel-header {
+        padding: 10px 15px;
+        font-weight: bold;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .compare-panel.base .panel-header {
+        background-color: #e3f2fd;
+        color: #1565c0;
+        border-bottom: 2px solid #1565c0;
+    }
+    .compare-panel.merged .panel-header {
+        background-color: #e8f5e9;
+        color: #2e7d32;
+        border-bottom: 2px solid #2e7d32;
+    }
+    .compare-panel .panel-body {
+        padding: 15px;
+        flex: 1;
+        overflow-y: auto;
+        min-height: 200px;
+        max-height: 500px;
+        background-color: #fafafa;
+    }
+    .compare-panel .panel-body .placeholder {
+        color: #999;
+        text-align: center;
+        padding: 40px 20px;
+    }
+    .compare-panel .panel-body .response-text {
+        white-space: pre-wrap;
+        word-break: break-word;
+        line-height: 1.6;
+        font-size: 14px;
+    }
+    /* 加载动画 */
+    .loading-dots::after {
+        content: '';
+        animation: dots 1.5s steps(4, end) infinite;
+    }
+    @keyframes dots {
+        0%, 20% { content: ''; }
+        40% { content: '.'; }
+        60% { content: '..'; }
+        80%, 100% { content: '...'; }
+    }
+    .spinner-border-sm {
+        width: 1rem;
+        height: 1rem;
+        border-width: 0.15em;
+    }
+    /* 设备信息栏 */
+    .device-info {
+        font-size: 0.85rem;
+        color: #666;
+    }
+    .device-info .badge {
+        font-size: 0.75rem;
+    }
+    /* 参数设置区 */
+    .param-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .param-group label {
+        font-size: 0.85rem;
+        color: #666;
+        margin-bottom: 0;
+        white-space: nowrap;
+    }
+    /* 历史记录 */
+    .history-item {
+        border: 1px solid #e9ecef;
+        border-radius: 6px;
+        margin-bottom: 10px;
+        overflow: hidden;
+    }
+    .history-item .history-prompt {
+        background-color: #f8f9fa;
+        padding: 8px 12px;
+        font-weight: bold;
+        font-size: 0.9rem;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .history-item .history-prompt:hover {
+        background-color: #e9ecef;
+    }
+    .history-item .history-responses {
+        display: none;
+    }
+    .history-item.expanded .history-responses {
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 顶部导航 -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <a href="{{ url_for('workspace.task_detail', project_id=current_project.id, task_id=task._id) }}" class="btn btn-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> 返回任务详情
+            </a>
+        </div>
+        <div class="device-info">
+            <i class="bi bi-cpu"></i>
+            推理设备：
+            {% if device_info.mode == 'gpu_4bit' %}
+            <span class="badge bg-success">GPU 4bit 量化</span>
+            <small>{{ device_info.device_name }}</small>
+            {% elif device_info.mode == 'gpu_fp16' %}
+            <span class="badge bg-primary">GPU FP16</span>
+            <small>{{ device_info.device_name }}</small>
+            {% else %}
+            <span class="badge bg-secondary">CPU</span>
+            <small>（速度较慢，请耐心等待）</small>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 标题 -->
+    <div class="mb-3">
+        <h5><i class="bi bi-chat-square-text"></i> 模型对比测试</h5>
+        <small class="text-muted">
+            Base 模型：<code>{{ base_model_path }}</code>
+            &nbsp;|&nbsp;
+            合并模型：<code>{{ merged_model_path }}</code>
+        </small>
+    </div>
+
+    <!-- 输入区域 -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="mb-3">
+                <label for="promptInput" class="form-label fw-bold">输入问题</label>
+                <textarea class="form-control" id="promptInput" rows="3" 
+                    placeholder="请输入你想问模型的问题，例如：你好，请介绍一下你们酒店的房型"></textarea>
+            </div>
+
+            <!-- 参数设置 -->
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <div class="param-group">
+                        <label for="maxTokens">最大生成长度：</label>
+                        <input type="range" class="form-range" id="maxTokens" 
+                            min="64" max="2048" value="512" step="64">
+                        <span id="maxTokensValue" class="text-muted" style="min-width:50px">512</span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="param-group">
+                        <label for="temperature">温度：</label>
+                        <input type="range" class="form-range" id="temperature" 
+                            min="0.1" max="1.5" value="0.7" step="0.1">
+                        <span id="temperatureValue" class="text-muted" style="min-width:30px">0.7</span>
+                    </div>
+                </div>
+                <div class="col-md-3 d-flex align-items-center">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="enableThinking">
+                        <label class="form-check-label" for="enableThinking">
+                            <i class="bi bi-lightbulb"></i> 深度思考
+                        </label>
+                    </div>
+                    <small class="text-muted ms-2" title="开启后模型会先进行推理思考，再给出最终回答。对比时可以看到两个模型的推理过程差异">
+                        <i class="bi bi-info-circle"></i>
+                    </small>
+                </div>
+                <div class="col-md-3 d-flex align-items-center justify-content-end">
+                    <button class="btn btn-outline-secondary btn-sm me-2" id="clearBtn">
+                        <i class="bi bi-eraser"></i> 清空
+                    </button>
+                    <button class="btn btn-primary" id="sendBtn">
+                        <i class="bi bi-send"></i> 发送对比
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 对比结果区域 -->
+    <div class="row" id="compareResult">
+        <div class="col-md-6">
+            <div class="compare-panel base">
+                <div class="panel-header">
+                    <span><i class="bi bi-box"></i> Base 模型（原始）</span>
+                    <span class="badge bg-light text-dark" id="baseTimeBadge" style="display:none"></span>
+                </div>
+                <div class="panel-body" id="baseResponse">
+                    <div class="placeholder">
+                        <i class="bi bi-chat-left-text" style="font-size:2rem"></i>
+                        <p>Base 模型的回答将在这里显示</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="compare-panel merged">
+                <div class="panel-header">
+                    <span><i class="bi bi-box-seam"></i> 合并模型（微调后）</span>
+                    <span class="badge bg-light text-dark" id="mergedTimeBadge" style="display:none"></span>
+                </div>
+                <div class="panel-body" id="mergedResponse">
+                    <div class="placeholder">
+                        <i class="bi bi-chat-left-text-fill" style="font-size:2rem"></i>
+                        <p>合并模型的回答将在这里显示</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 历史记录 -->
+    <div class="mt-4" id="historySection" style="display:none">
+        <h6><i class="bi bi-clock-history"></i> 历史记录</h6>
+        <div id="historyList"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    // DOM 元素
+    const promptInput = document.getElementById('promptInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const baseResponseEl = document.getElementById('baseResponse');
+    const mergedResponseEl = document.getElementById('mergedResponse');
+    const baseTimeBadge = document.getElementById('baseTimeBadge');
+    const mergedTimeBadge = document.getElementById('mergedTimeBadge');
+    const maxTokensSlider = document.getElementById('maxTokens');
+    const maxTokensValue = document.getElementById('maxTokensValue');
+    const temperatureSlider = document.getElementById('temperature');
+    const temperatureValue = document.getElementById('temperatureValue');
+    const historySection = document.getElementById('historySection');
+    const historyList = document.getElementById('historyList');
+    const enableThinkingCheckbox = document.getElementById('enableThinking');
+
+    // API 地址
+    const generateUrl = '{{ url_for("workspace.compare_generate", project_id=current_project.id, task_id=task._id) }}';
+    const historyUrl = '{{ url_for("workspace.compare_history_list", project_id=current_project.id, task_id=task._id) }}';
+    const csrfToken = '{{ csrf_token() }}';
+
+    // 历史记录（从后端加载）
+    let history = [];
+
+    // 是否正在生成
+    let isGenerating = false;
+
+    // 页面加载时获取历史记录
+    loadHistory();
+
+    // 滑块值更新
+    maxTokensSlider.addEventListener('input', function() {
+        maxTokensValue.textContent = this.value;
+    });
+    temperatureSlider.addEventListener('input', function() {
+        temperatureValue.textContent = this.value;
+    });
+
+    // 发送按钮
+    sendBtn.addEventListener('click', function() {
+        generate();
+    });
+
+    // 清空按钮
+    clearBtn.addEventListener('click', function() {
+        promptInput.value = '';
+        baseResponseEl.innerHTML = '<div class="placeholder"><i class="bi bi-chat-left-text" style="font-size:2rem"></i><p>Base 模型的回答将在这里显示</p></div>';
+        mergedResponseEl.innerHTML = '<div class="placeholder"><i class="bi bi-chat-left-text-fill" style="font-size:2rem"></i><p>合并模型的回答将在这里显示</p></div>';
+        baseTimeBadge.style.display = 'none';
+        mergedTimeBadge.style.display = 'none';
+    });
+
+    // 回车发送（Ctrl+Enter）
+    promptInput.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'Enter') {
+            generate();
+        }
+    });
+
+    // 生成函数
+    function generate() {
+        const prompt = promptInput.value.trim();
+        if (!prompt) {
+            alert('请输入问题');
+            return;
+        }
+        if (isGenerating) {
+            return;
+        }
+
+        isGenerating = true;
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 生成中...';
+
+        // 显示加载状态
+        baseResponseEl.innerHTML = '<div class="placeholder"><div class="spinner-border text-primary spinner-border-sm"></div> <span class="loading-dots">模型加载中，请稍候</span></div>';
+        mergedResponseEl.innerHTML = '<div class="placeholder"><div class="spinner-border text-success spinner-border-sm"></div> <span class="loading-dots">等待 Base 模型完成后推理</span></div>';
+        baseTimeBadge.style.display = 'none';
+        mergedTimeBadge.style.display = 'none';
+
+        const startTime = Date.now();
+
+        // 发送请求
+        fetch(generateUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}',
+            },
+            body: JSON.stringify({
+                prompt: prompt,
+                max_new_tokens: parseInt(maxTokensSlider.value),
+                temperature: parseFloat(temperatureSlider.value),
+                model_type: 'both',
+                enable_thinking: enableThinkingCheckbox.checked,
+            }),
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.error || '请求失败');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+
+            // 显示 Base 模型回答
+            if (data.base_error) {
+                baseResponseEl.innerHTML = '<div class="alert alert-danger mb-0"><i class="bi bi-exclamation-triangle"></i> ' + escapeHtml(data.base_error) + '</div>';
+            } else if (data.base_response) {
+                baseResponseEl.innerHTML = formatResponse(data.base_response, data.base_thinking);
+                baseTimeBadge.textContent = totalTime + 's';
+                baseTimeBadge.style.display = 'inline';
+            }
+
+            // 显示合并模型回答
+            if (data.merged_error) {
+                mergedResponseEl.innerHTML = '<div class="alert alert-danger mb-0"><i class="bi bi-exclamation-triangle"></i> ' + escapeHtml(data.merged_error) + '</div>';
+            } else if (data.merged_response) {
+                mergedResponseEl.innerHTML = formatResponse(data.merged_response, data.merged_thinking);
+                mergedTimeBadge.textContent = totalTime + 's';
+                mergedTimeBadge.style.display = 'inline';
+            }
+
+            // 如果有全局错误
+            if (data.error) {
+                baseResponseEl.innerHTML = '<div class="alert alert-danger mb-0"><i class="bi bi-exclamation-triangle"></i> ' + escapeHtml(data.error) + '</div>';
+                mergedResponseEl.innerHTML = '<div class="alert alert-danger mb-0"><i class="bi bi-exclamation-triangle"></i> ' + escapeHtml(data.error) + '</div>';
+            }
+
+            // 添加到历史记录
+            addHistory(
+                prompt, data.base_response, data.merged_response,
+                data.base_error, data.merged_error, totalTime,
+                data.base_thinking, data.merged_thinking,
+                data.history_id,
+                parseInt(maxTokensSlider.value),
+                parseFloat(temperatureSlider.value),
+                enableThinkingCheckbox.checked
+            );
+        })
+        .catch(error => {
+            baseResponseEl.innerHTML = '<div class="alert alert-danger mb-0"><i class="bi bi-exclamation-triangle"></i> 请求失败: ' + escapeHtml(error.message) + '</div>';
+            mergedResponseEl.innerHTML = '<div class="alert alert-danger mb-0"><i class="bi bi-exclamation-triangle"></i> 请求失败: ' + escapeHtml(error.message) + '</div>';
+        })
+        .finally(() => {
+            isGenerating = false;
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = '<i class="bi bi-send"></i> 发送对比';
+        });
+    }
+
+    // 格式化响应（包含思考内容的展示）
+    function formatResponse(response, thinking) {
+        let html = '';
+        if (thinking) {
+            html += '<details class="mb-2">';
+            html += '<summary class="text-muted" style="cursor:pointer;font-size:0.85rem"><i class="bi bi-lightbulb"></i> 思考过程（点击展开）</summary>';
+            html += '<div class="thinking-content" style="background:#fff8e1;padding:8px 12px;border-radius:4px;font-size:0.85rem;white-space:pre-wrap;margin-top:4px;color:#666;border-left:3px solid #ffc107">' + escapeHtml(thinking) + '</div>';
+            html += '</details>';
+        }
+        html += '<div class="response-text">' + escapeHtml(response) + '</div>';
+        return html;
+    }
+
+    // 从后端加载历史记录
+    function loadHistory() {
+        fetch(historyUrl)
+            .then(response => response.json())
+            .then(data => {
+                if (data.records && data.records.length > 0) {
+                    history = data.records.map(function(r) {
+                        return {
+                            id: r._id,
+                            prompt: r.prompt || '',
+                            baseResp: r.base_response || '',
+                            baseThinking: r.base_thinking || '',
+                            baseErr: r.base_error || '',
+                            mergedResp: r.merged_response || '',
+                            mergedThinking: r.merged_thinking || '',
+                            mergedErr: r.merged_error || '',
+                            maxNewTokens: r.max_new_tokens || 512,
+                            temperature: r.temperature || 0.7,
+                            enableThinking: r.enable_thinking || false,
+                            createdAt: r.created_at || '',
+                        };
+                    });
+                    renderHistory();
+                }
+            })
+            .catch(function(err) {
+                console.error('加载历史记录失败:', err);
+            });
+    }
+
+    // 添加历史记录（推理成功后由前端更新列表）
+    function addHistory(prompt, baseResp, mergedResp, baseErr, mergedErr, time, baseThinking, mergedThinking, historyId, maxNewTokens, temperature, enableThinking) {
+        history.unshift({
+            id: historyId,
+            prompt: prompt,
+            baseResp: baseResp,
+            baseThinking: baseThinking || '',
+            baseErr: baseErr || '',
+            mergedResp: mergedResp,
+            mergedThinking: mergedThinking || '',
+            mergedErr: mergedErr || '',
+            maxNewTokens: maxNewTokens,
+            temperature: temperature,
+            enableThinking: enableThinking,
+            createdAt: new Date().toISOString(),
+        });
+        renderHistory();
+    }
+
+    // 删除历史记录
+    window.deleteHistory = function(historyId, event) {
+        if (event) event.stopPropagation();
+        if (!confirm('确定删除此条历史记录？')) return;
+
+        const deleteUrl = '{{ url_for("workspace.compare_history_delete", project_id=current_project.id, task_id=task._id, history_id=0) }}'.replace('/0', '/' + historyId);
+
+        fetch(deleteUrl, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                history = history.filter(function(item) { return item.id !== historyId; });
+                renderHistory();
+            } else {
+                alert('删除失败：' + (data.error || '未知错误'));
+            }
+        })
+        .catch(function(err) {
+            alert('删除失败：' + err.message);
+        });
+    };
+
+    // 格式化时间
+    function formatTime(isoStr) {
+        if (!isoStr) return '';
+        try {
+            const d = new Date(isoStr);
+            return d.toLocaleString('zh-CN', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit'});
+        } catch(e) {
+            return isoStr;
+        }
+    }
+
+    // 渲染历史记录
+    function renderHistory() {
+        if (history.length === 0) {
+            historySection.style.display = 'none';
+            return;
+        }
+        historySection.style.display = 'block';
+
+        let html = '';
+        history.forEach(function(item, index) {
+            html += '<div class="history-item" data-index="' + index + '">';
+            html += '<div class="history-prompt" onclick="toggleHistory(' + index + ')">';
+            html += '<span><i class="bi bi-chat-dots"></i> ' + escapeHtml(item.prompt) + '</span>';
+            html += '<span style="display:flex;align-items:center;gap:8px">';
+            // 参数标签
+            html += '<span class="badge bg-light text-dark" style="font-size:0.7rem">' + item.maxNewTokens + ' tokens</span>';
+            html += '<span class="badge bg-light text-dark" style="font-size:0.7rem">T=' + item.temperature + '</span>';
+            if (item.enableThinking) {
+                html += '<span class="badge bg-warning text-dark" style="font-size:0.7rem"><i class="bi bi-lightbulb"></i> 思考</span>';
+            }
+            html += '<span class="text-muted" style="font-size:0.75rem">' + formatTime(item.createdAt) + '</span>';
+            // 删除按钮
+            if (item.id) {
+                html += '<button class="btn btn-outline-danger btn-sm py-0 px-1" style="font-size:0.7rem" onclick="deleteHistory(' + item.id + ', event)" title="删除"><i class="bi bi-trash"></i></button>';
+            }
+            html += '<i class="bi bi-chevron-down text-muted"></i>';
+            html += '</span>';
+            html += '</div>';
+            html += '<div class="history-responses">';
+            html += '<div class="row m-0">';
+            // Base 模型
+            html += '<div class="col-md-6 p-2" style="border-right:1px solid #e9ecef">';
+            html += '<small class="text-primary fw-bold">Base 模型</small>';
+            if (item.baseErr) {
+                html += '<div class="text-danger" style="font-size:0.85rem">' + escapeHtml(item.baseErr) + '</div>';
+            } else {
+                if (item.baseThinking) {
+                    html += '<details style="font-size:0.8rem"><summary class="text-muted" style="cursor:pointer"><i class="bi bi-lightbulb"></i> 思考过程</summary>';
+                    html += '<div style="background:#fff8e1;padding:4px 8px;border-radius:4px;white-space:pre-wrap;color:#666;border-left:2px solid #ffc107;margin:2px 0">' + escapeHtml(item.baseThinking) + '</div>';
+                    html += '</details>';
+                }
+                html += '<div style="font-size:0.85rem;white-space:pre-wrap">' + escapeHtml(item.baseResp || '无回答') + '</div>';
+            }
+            html += '</div>';
+            // 合并模型
+            html += '<div class="col-md-6 p-2">';
+            html += '<small class="text-success fw-bold">合并模型</small>';
+            if (item.mergedErr) {
+                html += '<div class="text-danger" style="font-size:0.85rem">' + escapeHtml(item.mergedErr) + '</div>';
+            } else {
+                if (item.mergedThinking) {
+                    html += '<details style="font-size:0.8rem"><summary class="text-muted" style="cursor:pointer"><i class="bi bi-lightbulb"></i> 思考过程</summary>';
+                    html += '<div style="background:#fff8e1;padding:4px 8px;border-radius:4px;white-space:pre-wrap;color:#666;border-left:2px solid #ffc107;margin:2px 0">' + escapeHtml(item.mergedThinking) + '</div>';
+                    html += '</details>';
+                }
+                html += '<div style="font-size:0.85rem;white-space:pre-wrap">' + escapeHtml(item.mergedResp || '无回答') + '</div>';
+            }
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+        });
+
+        historyList.innerHTML = html;
+    }
+
+    // 展开/收起历史记录
+    window.toggleHistory = function(index) {
+        const item = document.querySelector('.history-item[data-index="' + index + '"]');
+        if (item) {
+            item.classList.toggle('expanded');
+        }
+    };
+
+    // HTML 转义
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+})();
+</script>
+{% endblock %}

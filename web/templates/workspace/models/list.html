@@ -1,0 +1,55 @@
+{% extends "workspace/base.html" %}
+
+{% block title %}模型管理 - {{ current_project.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>模型管理</h2>
+        <a href="{{ url_for('workspace.create_model', project_id=current_project.id) }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> 新建模型
+        </a>
+    </div>
+    
+    {% if models %}
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>名称</th>
+                <th>基础模型</th>
+                <th>描述</th>
+                <th>创建人</th>
+                <th>创建时间</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for model in models %}
+            <tr>
+                <td>{{ model._id }}</td>
+                <td>{{ model.name }}</td>
+                <td>{{ model.base_model or '-' }}</td>
+                <td>{{ model.description or '-' }}</td>
+                <td>{{ model.created_by }}</td>
+                <td>{{ model.created_at|format_datetime }}</td>
+                <td>
+                    <a href="{{ url_for('workspace.model_detail', project_id=current_project.id, model_id=model._id) }}" class="btn btn-sm btn-success">
+                        <i class="bi bi-eye"></i> 查看
+                    </a>
+                    <form action="{{ url_for('workspace.delete_model', project_id=current_project.id, model_id=model._id) }}" method="POST" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('确定删除？')">
+                            <i class="bi bi-trash"></i> 删除
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="alert alert-info">暂无模型</div>
+    {% endif %}
+</div>
+{% endblock %}

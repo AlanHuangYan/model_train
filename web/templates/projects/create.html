@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}创建项目{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">创建项目</h2>
+    
+    <div class="card">
+        <div class="card-body">
+            <form method="POST">
+                {{ form.hidden_tag() }}
+                
+                <div class="mb-3">
+                    {{ form.name.label(class='form-label') }}
+                    {{ form.name(class='form-control', placeholder='例如：酒店客服训练') }}
+                    {% for error in form.name.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                    {% endfor %}
+                </div>
+                
+                <div class="mb-3">
+                    {{ form.english_name.label(class='form-label') }}
+                    {{ form.english_name(class='form-control', placeholder='例如：hotel_customer_service') }}
+                    <div class="form-text">英文名称将用作目录名，只能包含字母、数字、下划线和连字符，且必须以字母开头</div>
+                    {% for error in form.english_name.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                    {% endfor %}
+                </div>
+                
+                <div class="mb-3">
+                    {{ form.description.label(class='form-label') }}
+                    {{ form.description(class='form-control', rows=3, placeholder='项目描述（可选）') }}
+                    {% for error in form.description.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                    {% endfor %}
+                </div>
+                
+                <div class="d-grid gap-2">
+                    {{ form.submit(class='btn btn-primary') }}
+                    <a href="{{ url_for('projects.portal') }}" class="btn btn-secondary">取消</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends "workspace/base.html" %}
+
+{% block title %}GPU 检测 - {{ current_project.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="bi bi-cpu"></i> GPU 状态检测</h2>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">检测结果</h5>
+                </div>
+                <div class="card-body">
+                    <pre class="bg-light p-3" style="white-space: pre-wrap; font-family: monospace;">{{ output }}</pre>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">安装指南</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 
+                        <strong>重要提示：</strong>请在命令行中按以下步骤操作
+                    </div>
+                    
+                    <hr>
+                    
+                    <h6><i class="bi bi-1-circle"></i> 第一步：检查当前 PyTorch 版本</h6>
+                    <p class="small">在激活的虚拟环境中运行：</p>
+                    <pre class="bg-light p-2"><code>python -c "import torch; print(torch.__version__)"</code></pre>
+                    <p class="small text-muted">
+                        <i class="bi bi-exclamation-circle"></i> 
+                        如果版本号带有 <code>+cpu</code>，说明是 CPU 版<br>
+                        如果版本很老（如 1.x 或 2.0），可能不支持当前环境
+                    </p>
+                    
+                    <hr>
+                    
+                    <h6><i class="bi bi-2-circle"></i> 第二步：卸载旧版本</h6>
+                    <p class="small">为确保干净的环境，先卸载当前的 torch：</p>
+                    <pre class="bg-light p-2"><code>pip uninstall torch torchvision torchaudio</code></pre>
+                    
+                    <hr>
+                    
+                    <h6><i class="bi bi-3-circle"></i> 第三步：安装支持 CUDA 的 PyTorch</h6>
+                    <p class="small">
+                        由于你的驱动是 CUDA 13.2，可以安装支持 CUDA 12.x 的 PyTorch。<br>
+                        推荐使用 CUDA 12.1 版本（最稳定）：
+                    </p>
+                    <pre class="bg-light p-2"><code>pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121</code></pre>
+                    <p class="small text-muted">
+                        <i class="bi bi-info-circle"></i> 
+                        也可以安装 CUDA 12.4 版本（更新）：<br>
+                        <code>pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124</code>
+                    </p>
+                    
+                    <hr>
+                    
+                    <h6><i class="bi bi-4-circle"></i> 第四步：验证安装</h6>
+                    <p class="small">安装完成后，再次运行检查命令：</p>
+                    <pre class="bg-light p-2"><code>python -c "import torch; print('CUDA:', torch.cuda.is_available()); print('Version:', torch.version.cuda)"</code></pre>
+                    <p class="small text-muted">
+                        <i class="bi bi-check-circle text-success"></i> 
+                        如果显示 <code>CUDA: True</code>，则问题解决
+                    </p>
+                    
+                    <hr>
+                    
+                    <h6><i class="bi bi-cpu-fill"></i> RTX 5060 显卡特别说明</h6>
+                    <p class="small">
+                        RTX 5060 是最新一代显卡，需要 <strong>CUDA 12.4+</strong> 才能支持 sm120 架构。<br>
+                        如果 CUDA 12.1 不可用，请使用：
+                    </p>
+                    <pre class="bg-light p-2"><code>pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124</code></pre>
+                    
+                    <hr>
+                    
+                    <div class="d-grid">
+                        <a href="{{ url_for('workspace.tasks', project_id=current_project.id) }}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> 返回任务列表
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

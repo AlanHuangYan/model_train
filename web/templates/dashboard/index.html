@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}仪表板 - 模型训练管理系统{% endblock %}
+
+{% block content %}
+<h2>仪表板</h2>
+
+<!-- 统计卡片 -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <h5 class="card-title">总任务数</h5>
+                <h2>{{ stats.total_tasks }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <h5 class="card-title">待处理任务</h5>
+                <h2>{{ stats.pending_tasks }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <h5 class="card-title">运行中任务</h5>
+                <h2>{{ stats.running_tasks }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <h5 class="card-title">已完成任务</h5>
+                <h2>{{ stats.completed_tasks }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">模型统计</h5>
+            </div>
+            <div class="card-body">
+                <p>总模型数：<strong>{{ stats.total_models }}</strong></p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">数据统计</h5>
+            </div>
+            <div class="card-body">
+                <p>数据文件数：<strong>{{ stats.total_data_files }}</strong></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 最近任务 -->
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="mb-0">最近任务</h5>
+    </div>
+    <div class="card-body">
+        {% if recent_tasks %}
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>名称</th>
+                    <th>状态</th>
+                    <th>创建时间</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for task in recent_tasks %}
+                <tr>
+                    <td>{{ task._id }}</td>
+                    <td>{{ task.name }}</td>
+                    <td>
+                        {% if task.status == 'pending' %}
+                        <span class="badge bg-warning">待处理</span>
+                        {% elif task.status == 'running' %}
+                        <span class="badge bg-info">运行中</span>
+                        {% elif task.status == 'completed' %}
+                        <span class="badge bg-success">已完成</span>
+                        {% elif task.status == 'failed' %}
+                        <span class="badge bg-danger">失败</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ task.created_at }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted">暂无任务</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

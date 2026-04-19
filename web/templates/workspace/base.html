@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}项目空间{% endblock %}</title>
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-icons.css') }}">
+    <style>
+        .sidebar {
+            min-height: 100vh;
+            background-color: #343a40;
+        }
+        .sidebar a {
+            color: #fff;
+            text-decoration: none;
+        }
+        .sidebar a:hover {
+            color: #adb5bd;
+        }
+        .content {
+            padding: 20px;
+        }
+        .workspace-header {
+            background-color: #007bff;
+            color: white;
+            padding: 15px 20px;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- 项目空间头部 -->
+    <div class="workspace-header">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <a href="{{ url_for('projects.portal') }}" class="text-white me-3">
+                        <i class="bi bi-grid"></i> 项目门户
+                    </a>
+                    <span class="fw-bold">{{ current_project.name }}</span>
+                </div>
+                <a href="{{ url_for('projects.portal') }}" class="btn btn-light btn-sm">
+                    <i class="bi bi-box-arrow-right"></i> 返回门户
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 侧边栏 -->
+            <nav class="col-md-3 col-lg-2 d-md-block sidebar p-3">
+                <div class="mb-3">
+                    <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-light btn-sm w-100">
+                        <i class="bi bi-house"></i> 返回首页
+                    </a>
+                </div>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('workspace.dashboard', project_id=current_project.id) }}">
+                            <i class="bi bi-speedometer2"></i> 项目仪表盘
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('workspace.tasks', project_id=current_project.id) }}">
+                            <i class="bi bi-list-task"></i> 任务管理
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('workspace.models', project_id=current_project.id) }}">
+                            <i class="bi bi-robot"></i> 模型管理
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('workspace.data', project_id=current_project.id) }}">
+                            <i class="bi bi-database"></i> 数据管理
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            
+            <!-- 主内容区 -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 content">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

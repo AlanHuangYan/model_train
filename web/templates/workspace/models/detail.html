@@ -1,0 +1,74 @@
+{% extends "workspace/base.html" %}
+
+{% block title %}模型详情 - {{ current_project.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="mb-4">
+        <a href="{{ url_for('workspace.models', project_id=current_project.id) }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> 返回
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h4>{{ model.name }}</h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>基本信息</h5>
+                    <table class="table">
+                        <tr>
+                            <th>模型 ID</th>
+                            <td>{{ model._id }}</td>
+                        </tr>
+                        <tr>
+                            <th>名称</th>
+                            <td>{{ model.name }}</td>
+                        </tr>
+                        <tr>
+                            <th>基础模型</th>
+                            <td>{{ model.base_model or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>描述</th>
+                            <td>{{ model.description or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>创建人</th>
+                            <td>{{ model.created_by }}</td>
+                        </tr>
+                        <tr>
+                            <th>创建时间</th>
+                            <td>{{ model.created_at|format_datetime }}</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <div class="col-md-6">
+                    <h5>评估指标</h5>
+                    {% if model.metrics %}
+                    <div class="alert alert-success">
+                        <strong>准确率:</strong> {{ "%.2f"|format(model.metrics.accuracy * 100) }}%<br>
+                        <strong>精确率:</strong> {{ "%.2f"|format(model.metrics.precision * 100) }}%<br>
+                        <strong>召回率:</strong> {{ "%.2f"|format(model.metrics.recall * 100) }}%
+                    </div>
+                    {% else %}
+                    <p class="text-muted">暂无评估数据</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <hr>
+            
+            <form action="{{ url_for('workspace.delete_model', project_id=current_project.id, model_id=model._id) }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button type="submit" class="btn btn-danger" onclick="return confirm('确定删除？')">
+                    <i class="bi bi-trash"></i> 删除模型
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

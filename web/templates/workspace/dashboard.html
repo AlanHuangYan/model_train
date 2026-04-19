@@ -1,0 +1,144 @@
+{% extends "workspace/base.html" %}
+
+{% block title %}{{ current_project.name }} - 仪表盘{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">项目仪表盘</h2>
+    
+    <!-- 项目概览卡片 -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">任务</h5>
+                    <p class="display-4">{{ stats.task_count }}</p>
+                    <small>{{ stats.running_tasks or 0 }} 进行中</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card text-center bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">模型</h5>
+                    <p class="display-4">{{ stats.model_count }}</p>
+                    <small>最新：{{ stats.latest_model or '无' }}</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card text-center bg-warning text-white">
+                <div class="card-body">
+                    <h5 class="card-title">数据集</h5>
+                    <p class="display-4">{{ stats.data_count }}</p>
+                    <small>总计：{{ stats.total_data_size or '0 MB' }}</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card text-center bg-info text-white">
+                <div class="card-body">
+                    <h5 class="card-title">创建时间</h5>
+                    <p class="h4">{{ current_project.created_at|format_datetime }}</p>
+                    <small>{{ current_project.created_by or '未知' }} 创建</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 最近任务 -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-list-task"></i> 最近任务
+                </div>
+                <div class="card-body">
+                    {% if recent_tasks %}
+                    <ul class="list-group list-group-flush">
+                        {% for task in recent_tasks %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ task.name }}
+                            <span class="badge bg-{{ task.status == 'running' and 'primary' or task.status == 'completed' and 'success' or 'secondary' }}">
+                                {{ task.status }}
+                            </span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-muted">暂无任务</p>
+                    {% endif %}
+                </div>
+                <div class="card-footer text-end">
+                    <a href="{{ url_for('workspace.tasks', project_id=current_project.id) }}" class="btn btn-sm btn-primary">
+                        查看所有任务 <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-robot"></i> 最新模型
+                </div>
+                <div class="card-body">
+                    {% if recent_models %}
+                    <ul class="list-group list-group-flush">
+                        {% for model in recent_models %}
+                        <li class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <strong>{{ model.name }}</strong>
+                                <small class="text-muted">{{ model.created_at|format_datetime }}</small>
+                            </div>
+                            <small class="text-muted">{{ model.base_model }}</small>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-muted">暂无模型</p>
+                    {% endif %}
+                </div>
+                <div class="card-footer text-end">
+                    <a href="{{ url_for('workspace.models', project_id=current_project.id) }}" class="btn btn-sm btn-success">
+                        查看所有模型 <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 快速操作 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-lightning"></i> 快速操作
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <a href="{{ url_for('workspace.tasks', project_id=current_project.id) }}" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-list-task"></i> 管理任务
+                            </a>
+                        </div>
+                        <div class="col-md-4">
+                            <a href="{{ url_for('workspace.models', project_id=current_project.id) }}" class="btn btn-outline-success w-100">
+                                <i class="bi bi-robot"></i> 管理模型
+                            </a>
+                        </div>
+                        <div class="col-md-4">
+                            <a href="{{ url_for('projects.portal') }}" class="btn btn-outline-secondary w-100">
+                                <i class="bi bi-grid"></i> 返回门户
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
