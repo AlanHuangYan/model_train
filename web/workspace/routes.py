@@ -1271,6 +1271,20 @@ def compare_history_delete(project_id, task_id, history_id):
     return {'success': True}
 
 
+@bp.route('/<int:project_id>/tasks/<int:task_id>/compare/history/clear', methods=['POST'])
+@login_required
+def compare_history_clear(project_id, task_id):
+    """清除所有对比历史记录"""
+    log_message(f'清除所有对比历史记录：task_id={task_id}', task_id=task_id)
+    records = storage.find('compare_history', {'task_id': task_id})
+    deleted_count = 0
+    for record in records:
+        storage.delete('compare_history', record['_id'])
+        deleted_count += 1
+    log_message(f'已清除 {deleted_count} 条对比历史记录', task_id=task_id)
+    return {'success': True, 'deleted_count': deleted_count}
+
+
 @bp.route('/<int:project_id>/tasks/<int:task_id>/training_metrics')
 @login_required
 def training_metrics(project_id, task_id):

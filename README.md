@@ -95,6 +95,8 @@ python run.py
 2. 点击"注册"创建账号
 3. 登录后即可使用所有功能
 
+![项目门户](images/project%20portal.png)
+
 ## 项目结构
 
 ```
@@ -160,6 +162,8 @@ model_train/
 4. 点击"发送对比"，同时推理 Base 模型和合并模型
 5. 查看两个模型的回答差异，思考过程可点击展开查看
 6. 历史记录会自动保存，方便后续对比分析
+
+![模型对比测试](images/model%20comparison%20test.png)
 
 ## API 接口
 
